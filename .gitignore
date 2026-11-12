@@ -1,0 +1,23 @@
+# Go build outputs
+/capcut-auto-exporter.exe
+/capcut-auto-exporter.new.exe~
+/cli-test.exe
+*.exe
+*.test
+/bin/
+/dist/
+/coverage.out
+
+# Local configuration and environment files
+.env
+.env.*
+!.env.example
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
