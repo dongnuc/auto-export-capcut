@@ -493,7 +493,7 @@ func (u *ui) aboutPage(gtx C) D {
 			paragraph("Chất lượng video giống hệt khi bạn tự xuất trong CapCut (hiệu ứng, chuyển cảnh, chữ…)."),
 		),
 		section("Cách dùng nhanh",
-			step("1", "Chọn thư mục", "Thư mục project của CapCut (có sẵn mặc định) và thư mục output — phải trùng với thư mục CapCut đang xuất vào. Xuất tay một lần để CapCut nhớ thư mục."),
+			step("1", "Chọn thư mục", "Thư mục project của CapCut có sẵn mặc định. Thư mục output tự lấy từ CapCut (ô Theo CapCut); muốn đổi nơi xuất, chọn thư mục khác trong hộp thoại xuất của CapCut một lần."),
 			step("2", "Chọn project", "Tích chọn các project cần xuất, hoặc bấm nút ▶ ở cuối dòng để xuất riêng một project."),
 			step("3", "Bấm Bắt đầu xuất", "Tool tự mở CapCut, vào từng project, xuất và đóng. Trong lúc chạy đừng dùng chuột và bàn phím."),
 			step("4", "Theo dõi", "Cột Trạng thái và Chi tiết cập nhật trực tiếp; mọi bước được ghi trong Nhật ký và trang Lịch sử."),

@@ -9,6 +9,12 @@ go test ./...
 go run . -list        # in danh sách project
 ```
 
+## Thư mục output: tự lấy từ CapCut
+CapCut lưu thư mục xuất lần gần nhất **một chỗ cho cả ứng dụng** trong registry (không nằm trong thư mục project):
+`HKEY_CURRENT_USER\Software\Bytedance\CapCut\Modules\Export` → `ExportPath` (kèm `Resolution`, `codec`). Đã kiểm chứng: hộp thoại xuất bắt đầu từ giá trị này, và nó cập nhật theo thư mục bạn chọn khi xuất.
+
+Vì vậy ô **Theo CapCut** (bật mặc định) cạnh *Thư mục output* tự điền thư mục này và đọc lại trước mỗi project; không cần cấu hình output nữa. Muốn đổi nơi xuất: chọn thư mục khác trong hộp thoại xuất của CapCut một lần. Bỏ tích ô này nếu muốn nhập thư mục tay (tool sẽ cảnh báo nếu khác thư mục CapCut sẽ xuất).
+
 ## Chuẩn bị (làm một lần)
 1. Trong CapCut, xuất thử một video vào **thư mục output** bạn sẽ dùng. CapCut sẽ nhớ thư mục này, và nó phải trùng với "Thư mục output" trong tool. Tên file để mặc định (= tên project).
 2. Kiểm tra phím tắt xuất trong CapCut (mặc định trong tool: `Ctrl+E`), đóng project `Ctrl+W`.

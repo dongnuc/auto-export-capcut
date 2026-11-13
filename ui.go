@@ -23,6 +23,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"capcut-auto-exporter/internal/capcutreg"
 	"capcut-auto-exporter/internal/config"
 	"capcut-auto-exporter/internal/drafts"
 	"capcut-auto-exporter/internal/logx"
@@ -76,6 +77,7 @@ type ui struct {
 	openMode                                    widget.Enum
 	launchBtn, calibrateBtn                     widget.Clickable
 	backupOld, skipMissing, shutdownWhenDone    widget.Bool
+	outputAuto                                  widget.Bool
 	startBtn, stopBtn, continueBtn              widget.Clickable
 	cancelShutdownBtn                           widget.Clickable
 	allBtn, noneBtn, filterBtn                  widget.Clickable
@@ -126,6 +128,7 @@ func newUI(w *app.Window) *ui {
 
 	u.draftsEd.SetText(u.cfg.DraftsDir)
 	u.outputEd.SetText(u.cfg.OutputDir)
+	u.outputAuto.Value = u.cfg.OutputAuto
 	u.exportKey = newCombo(u.cfg.ExportKey, "Ctrl+E", "Ctrl+M", "Ctrl+Shift+E", "F5")
 	u.confirmKey = newCombo(u.cfg.ConfirmKey, "Enter", "Space")
 	u.closeKey = newCombo(u.cfg.CloseKey, "Ctrl+W", "Ctrl+F4", "Alt+F4")
@@ -136,6 +139,7 @@ func newUI(w *app.Window) *ui {
 	u.backupOld.Value = u.cfg.ExistingPolicy == "backup"
 	u.skipMissing.Value = u.cfg.SkipMissingMedia
 	u.initSettings()
+	u.syncOutputField()
 
 	if err := winapi.WatchHotkey(stopHotkey, func() { u.stop("phím " + stopHotkey) }); err != nil {
 		u.log("[!] Không đăng ký được phím dừng: %v", err)
@@ -244,6 +248,7 @@ func (u *ui) readCfg() config.Config {
 	u.mu.Unlock()
 	c.DraftsDir = strings.TrimSpace(u.draftsEd.Text())
 	c.OutputDir = strings.TrimSpace(u.outputEd.Text())
+	c.OutputAuto = u.outputAuto.Value
 	if t := u.exportKey.text(); t != "" {
 		c.ExportKey = t
 	}
@@ -289,6 +294,7 @@ func (u *ui) startRows(sel []*row) {
 	if u.isRunning() {
 		return
 	}
+	u.syncOutputField()
 	cfg := u.readCfg()
 	if len(sel) == 0 {
 		u.log("Chưa chọn project nào.")
@@ -571,10 +577,15 @@ func (u *ui) handle(gtx C) {
 		u.outputEd.SetText(po)
 		u.readCfg()
 	}
+	if u.outputAuto.Update(gtx) {
+		u.syncOutputField()
+		u.readCfg()
+	}
 	if u.reloadBtn.Clicked(gtx) || u.reloadBtn2.Clicked(gtx) {
 		if u.isRunning() {
 			u.log("[!] Đang xuất, hãy tải lại sau khi xong.")
 		} else {
+			u.syncOutputField()
 			u.readCfg()
 			u.loadDrafts(true)
 		}
@@ -666,4 +677,21 @@ func (u *ui) handle(gtx C) {
 		u.readCfg()
 	}
 	u.handleSettings(gtx)
+}
+
+// syncOutputField fills the output folder from CapCut's saved export folder
+// when "Theo CapCut" is on. Nothing is logged unless the folder changed.
+func (u *ui) syncOutputField() {
+	if !u.outputAuto.Value {
+		return
+	}
+	e, err := capcutreg.ReadExport()
+	if err != nil {
+		u.log("[!] %v — bỏ tích \"Theo CapCut\" để chọn thư mục output thủ công.", err)
+		return
+	}
+	if !capcutreg.SamePath(strings.TrimSpace(u.outputEd.Text()), e.Path) {
+		u.outputEd.SetText(e.Path)
+		u.log("Thư mục output lấy từ CapCut: %s (%s, %s)", e.Path, e.Resolution, e.Codec)
+	}
 }
