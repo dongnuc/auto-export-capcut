@@ -16,7 +16,11 @@ const (
 type Config struct {
 	DraftsDir string `json:"drafts_dir"` // folder holding root_meta_info.json
 	OutputDir string `json:"output_dir"` // folder CapCut exports into
-	CapCutExe string `json:"capcut_exe"` // empty = auto-detect
+	// OutputAuto takes the output folder from CapCut's own saved export folder
+	// (registry), so it never has to be configured here. OutputDir is then only
+	// a cache of the last value read.
+	OutputAuto bool   `json:"output_auto"`
+	CapCutExe  string `json:"capcut_exe"` // empty = auto-detect
 
 	ExportKey  string `json:"export_key"`  // opens the export dialog
 	ConfirmKey string `json:"confirm_key"` // starts the export inside the dialog
@@ -60,6 +64,7 @@ func Default() Config {
 		CloseKey:   "Ctrl+W",
 		DismissKey: "Escape",
 		OpenMode:   OpenAuto,
+		OutputAuto: true,
 		// Centre of the first card under "Dự án" on CapCut 6.9's home screen,
 		// measured on a maximized 1920x1080 window. The card grid has a fixed
 		// pixel size, so other resolutions should use the calibrate button.

@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"capcut-auto-exporter/internal/capcutreg"
 	"capcut-auto-exporter/internal/config"
 	"capcut-auto-exporter/internal/detect"
 	"capcut-auto-exporter/internal/drafts"
@@ -71,6 +72,7 @@ type Runner struct {
 	exportDlg    uintptr         // export dialog of the export in progress: never close it
 	missingMedia bool            // the current project reported missing media
 	updTried     map[uintptr]int // update popups already handled (attempt counts)
+	warnedOutput bool            // the manual-output mismatch was already reported
 }
 
 // stepError is a failure with the step it happened in, for the log and UI.
@@ -129,7 +131,34 @@ func (r *Runner) shot(label string) {
 	}
 }
 
+// syncOutput makes the watched folder the folder CapCut will really export to.
+// CapCut keeps one export folder for the whole app (registry, see capcutreg),
+// so with OutputAuto the folder is read from there before every project; when
+// the folder is set by hand and differs, that is logged because the exported
+// file would then never be seen.
+func (r *Runner) syncOutput() error {
+	e, err := capcutreg.ReadExport()
+	if r.cfg.OutputAuto {
+		if err != nil {
+			return fmt.Errorf("%v — bỏ tích \"Theo CapCut\" và chọn thư mục output thủ công", err)
+		}
+		if !capcutreg.SamePath(e.Path, r.cfg.OutputDir) {
+			r.L.Infof("Thư mục output lấy từ CapCut: %s (%s, %s)", e.Path, e.Resolution, e.Codec)
+		}
+		r.cfg.OutputDir = e.Path
+		return nil
+	}
+	if err == nil && r.cfg.OutputDir != "" && !capcutreg.SamePath(e.Path, r.cfg.OutputDir) && !r.warnedOutput {
+		r.warnedOutput = true
+		r.L.Warnf("CapCut sẽ xuất vào %s nhưng tool đang theo dõi %s — file xuất sẽ không được nhận diện. Hãy tích \"Theo CapCut\" hoặc đổi thư mục xuất trong CapCut.", e.Path, r.cfg.OutputDir)
+	}
+	return nil
+}
+
 func (r *Runner) validate() error {
+	if err := r.syncOutput(); err != nil {
+		return err
+	}
 	c := r.cfg
 	if c.OutputDir == "" {
 		return fmt.Errorf("chưa chọn thư mục output")
@@ -214,6 +243,12 @@ func (r *Runner) exportOne(i int) (err error) {
 			r.L.Errorf("panic khi xử lý %s: %v", r.items[i].Draft.Name, p)
 		}
 	}()
+	if err := r.syncOutput(); err != nil {
+		return r.fail("thu-muc-output", err)
+	}
+	if st, err := os.Stat(r.cfg.OutputDir); err != nil || !st.IsDir() {
+		return r.fail("thu-muc-output", fmt.Errorf("thư mục output không tồn tại: %q", r.cfg.OutputDir))
+	}
 	d := r.items[i].Draft
 	c := r.cfg
 	r.missingMedia = false

@@ -353,7 +353,7 @@ func (u *ui) askBanner(gtx C) D {
 	})
 }
 
-func (u *ui) pathRow(gtx C, ic *widget.Icon, label string, ed *widget.Editor, hint string, btns layout.Widget) D {
+func (u *ui) pathRow(gtx C, ic *widget.Icon, label string, ed *widget.Editor, hint string, mid layout.Widget, btns layout.Widget) D {
 	return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
 		layout.Rigid(func(gtx C) D {
 			gtx.Constraints.Min.X = gtx.Dp(150)
@@ -366,6 +366,12 @@ func (u *ui) pathRow(gtx C, ic *widget.Icon, label string, ed *widget.Editor, hi
 		}),
 		layout.Flexed(1, func(gtx C) D { return u.input(gtx, ed, hint, nil, nil) }),
 		gapW(10),
+		layout.Rigid(func(gtx C) D {
+			if mid == nil {
+				return D{}
+			}
+			return layout.Inset{Right: 10}.Layout(gtx, mid)
+		}),
 		layout.Rigid(btns),
 	)
 }
@@ -377,7 +383,7 @@ func (u *ui) setupCard(gtx C) D {
 			layout.Rigid(func(gtx C) D { return u.cardTitle(gtx, "1", "Thiết lập xuất project", nil) }),
 			gapH(10),
 			layout.Rigid(func(gtx C) D {
-				return u.pathRow(gtx, icFolder, "Thư mục project", &u.draftsEd, "…/CapCut/User Data/Projects/com.lveditor.draft", func(gtx C) D {
+				return u.pathRow(gtx, icFolder, "Thư mục project", &u.draftsEd, "…/CapCut/User Data/Projects/com.lveditor.draft", nil, func(gtx C) D {
 					return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
 						layout.Rigid(func(gtx C) D {
 							return u.button(gtx, &u.draftsBtn, bopt{style: bOutline, icon: icFolderOpn, label: "Chọn…", minW: 96})
@@ -391,10 +397,17 @@ func (u *ui) setupCard(gtx C) D {
 			}),
 			gapH(8),
 			layout.Rigid(func(gtx C) D {
-				return u.pathRow(gtx, icMovie, "Thư mục output", &u.outputEd, "Thư mục CapCut đang xuất video vào", func(gtx C) D {
+				u.outputEd.ReadOnly = u.outputAuto.Value
+				hint := "Thư mục CapCut đang xuất video vào"
+				if u.outputAuto.Value {
+					hint = "Tự lấy từ CapCut"
+				}
+				return u.pathRow(gtx, icMovie, "Thư mục output", &u.outputEd, hint, func(gtx C) D {
+					return u.checkbox(gtx, &u.outputAuto, "Theo CapCut")
+				}, func(gtx C) D {
 					return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
 						layout.Rigid(func(gtx C) D {
-							return u.button(gtx, &u.outputBtn, bopt{style: bOutline, icon: icFolderOpn, label: "Chọn…", minW: 96})
+							return u.button(gtx, &u.outputBtn, bopt{style: bOutline, icon: icFolderOpn, label: "Chọn…", minW: 96, disabled: u.outputAuto.Value})
 						}),
 						gapW(8),
 						layout.Rigid(func(gtx C) D {
