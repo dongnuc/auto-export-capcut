@@ -6,6 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime/debug"
 	"time"
 
 	"gioui.org/app"
@@ -43,6 +45,15 @@ func main() {
 	}
 	if *export != "" {
 		os.Exit(runCLI(*export))
+	}
+
+	// A fatal Go error (not a recoverable panic) used to end the process with
+	// its message sent to a stderr nobody sees. Keep it in a file next to the logs.
+	if err := os.MkdirAll(filepath.Join(config.Dir(), "logs"), 0o755); err == nil {
+		if f, err := os.OpenFile(filepath.Join(config.Dir(), "logs", "crash.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
+			fmt.Fprintf(f, "\n=== %s: tool started ===\n", time.Now().Format("2006-01-02 15:04:05"))
+			_ = debug.SetCrashOutput(f, debug.CrashOptions{})
+		}
 	}
 
 	go func() {

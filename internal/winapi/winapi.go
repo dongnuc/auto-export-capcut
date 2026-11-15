@@ -7,6 +7,7 @@ package winapi
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -121,24 +122,41 @@ func describe(h uintptr) Window {
 		Visible: vis != 0, Iconic: ico != 0, Owned: owner != 0}
 }
 
-// Windows lists visible top-level windows belonging to the given PIDs.
-func Windows(pids []uint32) []Window {
-	set := map[uint32]bool{}
-	for _, p := range pids {
-		set[p] = true
-	}
-	var out []Window
-	cb := syscall.NewCallback(func(h, _ uintptr) uintptr {
+// enumState is what the EnumWindows callback fills in; enumMu serialises users.
+//
+// The callback is created ONCE. syscall.NewCallback never frees what it makes
+// and the Go runtime allows only 2000 of them per process: creating one per
+// call made the whole process die with "fatal error: too many callback
+// functions" (not recoverable, nothing in the log) after roughly 18 minutes of
+// polling windows during a long export.
+var (
+	enumMu   sync.Mutex
+	enumSet  map[uint32]bool
+	enumOut  []Window
+	enumProc = syscall.NewCallback(func(h, _ uintptr) uintptr {
 		var pid uint32
 		pGetWindowThreadProcessId.Call(h, uintptr(unsafe.Pointer(&pid)))
-		if set[pid] {
+		if enumSet[pid] {
 			if w := describe(h); w.Visible {
-				out = append(out, w)
+				enumOut = append(enumOut, w)
 			}
 		}
 		return 1
 	})
-	pEnumWindows.Call(cb, 0)
+)
+
+// Windows lists visible top-level windows belonging to the given PIDs.
+func Windows(pids []uint32) []Window {
+	enumMu.Lock()
+	defer enumMu.Unlock()
+	enumSet = map[uint32]bool{}
+	for _, p := range pids {
+		enumSet[p] = true
+	}
+	enumOut = nil
+	pEnumWindows.Call(enumProc, 0)
+	out := enumOut
+	enumOut, enumSet = nil, nil
 	return out
 }
 
